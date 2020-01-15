@@ -16,6 +16,8 @@ pip3 install keras
 pip3 install tensorflow-gpu
 pip3 install mpmath
 pip3 install statsmodels
+pip3 install networkx
+pip3 install pillow==6.1
 ```
 
 # Scripts and usages
