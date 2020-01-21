@@ -36,4 +36,10 @@ In the deep learning setting, we utilize the conventional MNIST and USPS dataset
 
 digits_ddm.py: main file to run for drift detection experiment using DDM benchmark
 
+digits_ph.py: main file to run for drift detection experiment using Page Hinkley benchmark
+
+digits_adwin.py: main file to run for drift detection experiment using ADWIN benchmark
+
+digits_ewma.py: main file to run for drift detection experiment using EWMA benchmark
+
 drift_experiment.py: main file to run for drift detection experiment using our method
