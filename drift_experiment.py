@@ -27,6 +27,7 @@ import argparse
 import os
 import numpy as np
 import torch
+from torch import nn
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optimizer
@@ -35,6 +36,13 @@ import models
 import torch.distributions as td
 from torch.autograd import Variable
 from sklearn.metrics import accuracy_score
+from spn.algorithms.LearningWrappers import learn_parametric, learn_classifier
+from spn.structure.leaves.parametric.Parametric import Categorical, Gaussian
+from spn.structure.Base import Context
+from spn.algorithms.MPE import mpe
+from spn.algorithms.layerwise.distributions import Normal
+from spn.algorithms.layerwise.layers import Sum, Product
+from spn.algorithms.layerwise.clipper import DistributionClipper
 
 np.random.seed(0)
 print('Load data')
@@ -92,7 +100,7 @@ previous_xs, previous_ys = [], []
 previous_xt, previous_yt = [], []
 no_drift_count = 0
 
-q1_list,q2_list,q3_list,qAE_list = [],[],[],[]
+q1_list,q2_list,q3_list,qAE_list,qspn_list = [],[],[],[],[]
     
 dd = DDM(3,2)
 warning_index = []
@@ -102,9 +110,13 @@ dd_3 = DDM(3,2)
 warning_index_3 = []
 dd_AE = DDM(3,2)
 warning_index_AE = []
-q1_drift, q2_drift, q3_drift, qAE_drift = False, False, False, False
+dd_spn = DDM(3,2)
+warning_index_spn = []
+dd_FS = DDM(3,2)
+warning_index_FS = []
+q1_drift, q2_drift, q3_drift, qAE_drift,qspn_drift = False, False, False, False, False
 first_training_index = sys.maxsize
-drift_1, drift_2, drift_3, drift_AE = [],[],[],[]
+drift_1, drift_2, drift_3, drift_AE, drift_spn = [],[],[],[],[]
 
 drift_list = []
 prequential_acc = []
@@ -169,6 +181,44 @@ def test_ae(model_f, model_de, test_x):
     loss = cri(output, test_x)
     return loss.item()
 
+gauss = Normal(multiplicity=5, in_features=50)
+prod1 = Product(in_features=50, cardinality=5)
+sum1 = Sum(in_features=10, in_channels=5, out_channels=1)
+prod2 = Product(in_features=10, cardinality=10)
+spn = nn.Sequential(gauss, prod1, sum1, prod2).cuda()
+clipper = DistributionClipper()
+optimizer_spn = torch.optim.Adam(spn.parameters(), lr=0.001)
+optimizer_spn.zero_grad()
+
+#temp_loss = []
+def train_spn(model_f, spn, train_x):
+    model_f.eval()
+    spn.train()
+    if True:
+        for t in range(200):
+            for i in range(len(train_x)):
+                data = train_x[i]
+                data = data.cuda()
+                feature = model_f(data)
+                output = spn(feature)
+                loss = -1 * output.mean()
+                loss.backward()
+                optimizer_spn.step()
+                spn.apply(clipper)
+                optimizer_spn.zero_grad()
+                #temp_loss.append(loss.item())
+train_spn(model_f, spn, train_xs)
+
+def test_spn(model_f, spn, test_x):
+    model_f.eval()
+    spn.eval()
+    test_x = test_x.cuda()
+    feature = model_f(test_x)
+    output = spn(feature)
+    loss = -1 * output.mean()
+    return loss.item()
+
+
 ### start monitoring
 
 for i in range(initial_batches + label_lag, n_batch):
@@ -210,6 +260,7 @@ for i in range(initial_batches + label_lag, n_batch):
     q2_list.append(Q3u(previous_xtogether, model_f, model_c))
     q3_list.append(Q4u(previous_xtogether, train_xtogether[-50:], model_f))
     qAE_list.append(math.tanh(test_ae(model_f, model_de, previous_xtogether[-1])/AE_tr_err/2))
+    qspn_list.append(np.log(test_spn(model_f, spn, previous_xtogether[-1])))
     prequential_acc.append(nn_score(model_f, model_c, [previous_xtogether[-1]], [previous_ytogether[-1]], [], [], 0))
     if q1_drift == False:
         if dd.set_input(q1_list[-1])==True:
@@ -251,9 +302,19 @@ for i in range(initial_batches + label_lag, n_batch):
             drift_AE.append(i)
         elif dd_AE.is_warning_zone:
             warning_index_AE.append(i)
+    if qspn_drift == False:
+        if dd_spn.set_input(qspn_list[-1])==True:
+            qspn_drift=True
+            if warning_index_spn!=[]:
+                first_training_index = np.min([first_training_index, keep_last_consecutive(warning_index_spn)[0]]) 
+            else:
+                first_training_index = np.min([first_training_index, i]) 
+            drift_spn.append(i)
+        elif dd_spn.is_warning_zone:
+            warning_index_spn.append(i)
 
     # determine if drift has occurred by tailored majority voting
-    if q1_drift*3+q2_drift*1+q3_drift*1+qAE_drift*1>=3:
+    if q1_drift*3+q2_drift*1+q3_drift*1+qAE_drift*1+qspn_drift*1>=3:
         first_training_index = np.min([first_training_index, i-label_lag])
         start_time = time.time()
         print('CHANGE DETECTED at '+str(i))
@@ -332,8 +393,35 @@ for i in range(initial_batches + label_lag, n_batch):
         warning_index_2 = []
         warning_index_3 = []
         warning_index_AE = []
-        q1_drift, q2_drift, q3_drift, qAE_drift = False, False, False, False
+        warning_index_spn = []
+        q1_drift, q2_drift, q3_drift, qAE_drift, qspn_drift = False, False, False, False, False
         retraining_time += (time.time() - start_time)
         first_training_index = sys.maxsize
     print(i)
 print(np.mean(prequential_acc))
+
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
+plt.plot(q1_list)
+plt.savefig('q1_list')
+plt.clf()
+plt.plot(q2_list)
+plt.savefig('q2_list')
+plt.clf()
+plt.plot(q3_list)
+plt.savefig('q3_list')
+plt.clf()
+plt.plot(qAE_list)
+plt.savefig('qAE_list')
+plt.clf()
+plt.plot(qspn_list)
+plt.savefig('qspn_list')
+plt.clf()
+print(drift_list)
+print(drift_1)
+print(drift_2)
+print(drift_3)
+print(drift_AE)
+print(drift_spn)
