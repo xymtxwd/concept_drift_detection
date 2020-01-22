@@ -30,18 +30,18 @@ Our evaluation metric is the average accuracy in this data flow.
 
 `datasets`: specify digits datasets for drift detection experiment, i.e. MNIST, USPS
 
-useful_functions.py: functions to calculate scores (i.e., q1, q2, etc.) for monitoring drift and other useful functions
+`useful_functions.py`: functions to calculate scores (i.e., q1, q2, etc.) for monitoring drift and other useful functions
 
-drift_detection_method.py: drift detectors, e.g. DDM, ADWIN, etc.
+`drift_detection_method.py`: drift detectors, e.g. DDM, ADWIN, etc.
 
-models.py: classification models in PyTorch
+`models.py`: classification models in PyTorch
 
-digits_ddm.py: main file to run for drift detection experiment using DDM benchmark
+`digits_ddm.py`: main file to run for drift detection experiment using `DDM` benchmark
 
-digits_ph.py: main file to run for drift detection experiment using Page Hinkley benchmark
+`digits_ph.py`: main file to run for drift detection experiment using `Page Hinkley` benchmark
 
-digits_adwin.py: main file to run for drift detection experiment using ADWIN benchmark
+`digits_adwin.py`: main file to run for drift detection experiment using `ADWIN` benchmark
 
-digits_ewma.py: main file to run for drift detection experiment using EWMA benchmark
+`digits_ewma.py`: main file to run for drift detection experiment using `EWMA` benchmark
 
-drift_experiment.py: main file to run for drift detection experiment using our method
+`drift_experiment.py`: main file to run for drift detection experiment using `our method`
