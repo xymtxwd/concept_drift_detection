@@ -45,3 +45,7 @@ Our evaluation metric is the average accuracy in this data flow.
 `digits_ewma.py`: main file to run for drift detection experiment using `EWMA` benchmark
 
 `drift_experiment.py`: main file to run for drift detection experiment using `our method`
+
+# References
+
+SPN: https://github.com/SPFlow/SPFlow
