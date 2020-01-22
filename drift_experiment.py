@@ -395,6 +395,17 @@ for i in range(initial_batches + label_lag, n_batch):
         warning_index_AE = []
         warning_index_spn = []
         q1_drift, q2_drift, q3_drift, qAE_drift, qspn_drift = False, False, False, False, False
+
+        gauss = Normal(multiplicity=5, in_features=50)
+        prod1 = Product(in_features=50, cardinality=5)
+        sum1 = Sum(in_features=10, in_channels=5, out_channels=1)
+        prod2 = Product(in_features=10, cardinality=10)
+        spn = nn.Sequential(gauss, prod1, sum1, prod2).cuda()
+        clipper = DistributionClipper()
+        optimizer_spn = torch.optim.Adam(spn.parameters(), lr=0.001)
+        optimizer_spn.zero_grad()
+        train_spn(model_f, spn, train_xs)
+
         retraining_time += (time.time() - start_time)
         first_training_index = sys.maxsize
     print(i)
