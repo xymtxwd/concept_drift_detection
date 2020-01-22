@@ -48,4 +48,4 @@ Our evaluation metric is the average accuracy in this data flow.
 
 # References
 
-SPN: https://github.com/SPFlow/SPFlow
+We thank Alejandro Molina for the great SPN implementation: https://github.com/SPFlow/SPFlow
