@@ -36,15 +36,13 @@ Our evaluation metric is the average accuracy in this data flow.
 
 `models.py`: classification models in PyTorch
 
-`digits_ddm.py`: main file to run for drift detection experiment using `DDM` benchmark
+`drift_experiment.py`: main file to run for drift detection experiment, 
 
-`digits_ph.py`: main file to run for drift detection experiment using `Page Hinkley` benchmark
+```
+python drift_experiment.py --model ours
+```
 
-`digits_adwin.py`: main file to run for drift detection experiment using `ADWIN` benchmark
-
-`digits_ewma.py`: main file to run for drift detection experiment using `EWMA` benchmark
-
-`drift_experiment.py`: main file to run for drift detection experiment using `our method`
+model choices: 'ours', 'ddm', 'ph','adwin','ewma'
 
 # References
 
