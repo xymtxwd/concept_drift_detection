@@ -78,9 +78,7 @@ class Classifier_u2m(nn.Module):
 class Net_f(nn.Module):
     def __init__(self, task='s2m', outdim=500):
         super(Net_f, self).__init__()
-        if task == 's2m':
-            self.generator = Generator_s2m()
-        elif task =='u2m' or task == 'm2u':
+        if task =='u2m' or task == 'm2u':
             self.generator = Generator_u2m(outdim=outdim)
                 
         for m in self.modules():
