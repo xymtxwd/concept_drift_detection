@@ -20,11 +20,40 @@ pip3 install networkx
 pip3 install pillow==6.1
 ```
 
-# Experiments
+# Structured data experiments
+
+In the conventional structured data setting, we have some datasets which contain drifts. If you would like to run experiments, please download data from https://drive.google.com/open?id=1X22viKZER9PlwoqmxjkDe5izDBWFN4AR and put the data in the folder named 'data' in the root dir, then run `drift_experiment_structured.py`.
+
+```
+python drift_experiment_structured.py --model ours --classifier lgbm --dataset elec
+```
+
+arguments: 
+- model: ['ours', 'ourslinear', 'ddm', 'ph','adwin','ewma'], default='ours'
+- classifier: ['lgbm', 'lstm', 'xgb','rf'], default='lgbm'
+- dataset: ['elec', 'sea', 'rbf','hyperplane','weather','weather2'], default='sea'
+- batch_size, default=64
+- lstm_ae, default=1, (use lstm as autoencoder)
+
+Our evaluation metric is the average accuracy in this data flow.
+
+# Unstructured data experiments (images)
 
 In the deep learning setting, we utilize the conventional MNIST and USPS datasets in domain adaptation to validate our framework. The two digits datasets contain 10 same classes, i.e. digits 0-9, but their distributions differ. In our experiments, we use MNIST as the 'base' (or 'source') dataset, i.e. any incoming batch will contain MNIST 0-9. USPS is used as the 'drift' (or 'target') dataset, i.e. after each 100 batches, a digit will be added to the incoming data distribution. For example, at batch # 80, all samples are MNIST digits. At batch # 180, however, USPS digit 0 samples will be available. 
 
+
+```
+python drift_experiment.py --model ours
+```
+
+arguments: 
+- model: ['ours', 'ddm', 'ph','adwin','ewma'], default='ours'
+
 Our evaluation metric is the average accuracy in this data flow.
+
+# Inference
+
+To test on your own image dataset, you need `inference_image.py`, and prepare data in batches. Each batch should be a folder in a certain format, please refer to https://pytorch.org/tutorials/beginner/data_loading_tutorial.html#afterword-torchvision. Then put the names of the folder in a .txt file, which should contain one image folder address per line. Change name in line 153. In line 143 (image encoder) 144(classifier) 145(image decoder), you need to change the model to fit the size of your own data. 
 
 # Scripts and usages
 
@@ -36,13 +65,12 @@ Our evaluation metric is the average accuracy in this data flow.
 
 `models.py`: classification models in PyTorch
 
-`drift_experiment.py`: main file to run for drift detection experiment, 
+`drift_experiment_structured.py`: main file to run for structured drift detection experiment
 
-```
-python drift_experiment.py --model ours
-```
+`drift_experiment.py`: main file to run for unstructured drift detection experiment
 
-model choices: 'ours', 'ddm', 'ph','adwin','ewma'
+`inference_image.py`: main file to run for inference
+
 
 # References
 
