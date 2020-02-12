@@ -22,7 +22,7 @@ pip3 install pillow==6.1
 
 # Structured data experiments
 
-In the conventional structured data setting, we have some datasets which contain drifts. If you would like to run experiments, please download data from https://drive.google.com/open?id=1X22viKZER9PlwoqmxjkDe5izDBWFN4AR and put the data in the folder named 'data' in the root dir, then run `drift_experiment_structured.py`.
+In the conventional structured data setting, we have some datasets which contain drifts. If you would like to run experiments, please download data from https://drive.google.com/open?id=1X22viKZER9PlwoqmxjkDe5izDBWFN4AR, then run `drift_experiment_structured.py`.
 
 ```
 python drift_experiment_structured.py --model ours --classifier lgbm --dataset elec
@@ -53,7 +53,8 @@ Our evaluation metric is the average accuracy in this data flow.
 
 # Inference
 
-To test on your own image dataset, you need `inference_image.py`, and prepare data in batches. Each batch should be a folder in a certain format, please refer to https://pytorch.org/tutorials/beginner/data_loading_tutorial.html#afterword-torchvision. Then put the names of the folder in a .txt file, which should contain one image folder address per line. Change name in line 153. In line 143 (image encoder) 144(classifier) 145(image decoder), you need to change the model to fit the size of your own data. 
+To test on your own image dataset, you need `inference_image.py`, and prepare data in batches. Each batch should be a folder in a certain format, please refer to https://pytorch.org/tutorials/beginner/data_loading_tutorial.html#afterword-torchvision. Then put the names of the folder in a .txt file, which should contain one image folder address per line. Change name in line 153. 
+In line 143 (image encoder) 144(classifier) 145(image decoder), you need to change the model to fit the size of your own data. This also needs to be changed in line 407-409. 
 
 # Scripts and usages
 
