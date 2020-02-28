@@ -281,7 +281,7 @@ if True:
         #normalize features
         data_X = [scaler.transform(datax) for datax in data_X]
     
-        q1_list.append(Q1(data_X, data_Y, label_lag, train_X, train_Y, clf2,window_size=window_size,alpha=alpha, beta=beta, p1_p2_weights=p1_p2_weights)*0.99+Q2(data_X, data_Y, label_lag, train_X, train_Y, clf2)*0.01)
+        q1_list.append(Q1(data_X, data_Y, label_lag, train_X, train_Y, clf2,window_size=window_size,alpha=alpha, beta=beta, p1_p2_weights=p1_p2_weights))
         q2_list.append(Q3(data_X, data_Y, label_lag, train_X, train_Y, clf2))
         q3_list.append(Q4(data_X, data_Y, label_lag, train_X, train_Y, clf2))
         qAE_list.append(math.tanh(autoencoder.evaluate(scaler.transform(batch_X[i]), scaler.transform(batch_X[i]))/AE_tr_err/2))
@@ -376,8 +376,6 @@ if True:
             print('retrain starting dataset index '+ str(first_training_index))
             clf2=classification_method(n_estimators=50)
             previous_train_X = train_X
-            #keep_last = label_lag if len(keep_last_consecutive(warning_index))>100 else keep_last
-            #keep_last = 100 if i-first_training_index>100 else sys.maxsize
             if q1_drift==True:
                 first_training_index = keep_last_consecutive(warning_index)[0]
             train_X, train_Y = np.concatenate([batch_X[j] for j in np.arange(first_training_index,i)[-keep_last:]]), np.concatenate([batch_Y[j] for j in np.arange(first_training_index,i)[-keep_last:]])
@@ -387,57 +385,7 @@ if True:
             scaler = skp.StandardScaler()
             scaler.fit(train_X)
             train_X = scaler.transform(train_X)
-    
-            if args.classifier!='ffn':
-                #more training sets
-                temp_clf = classification_method(n_estimators=50)
-                temp_clf.fit(train_X, train_Y)
-                scores = cross_val_score(clf2, train_X, np.squeeze(train_Y), cv=5)
-                threshold = scores.mean()+2.33*scores.std()
-                
-                num = 0
-                scores = np.zeros(first_training_index)
-                for p in range(0,first_training_index):
-                    scores[p] = temp_clf.score(scaler.transform(batch_X[p]),batch_Y[p])
-        
-                maxs = scores.argsort()[-int(len(scores)*0.1):][::-2]
-                
-                for p in maxs:
-                    if temp_clf.score(scaler.transform(batch_X[p]),batch_Y[p])>threshold and p>int(len(scores)/2):
-                        train_X = np.concatenate([train_X,scaler.transform(batch_X[p])])
-                        train_Y = np.concatenate([train_Y,batch_Y[p]])
-                        num+=1
-                
-                print(str(num)+' previous batches appended')
-            else:
-                #more training sets
-                from sklearn.model_selection import StratifiedKFold
-                kfold = StratifiedKFold(n_splits=5, shuffle=True)
-                cvscores = []
-                temp_clf = classification_method(n_estimators=50)
-                temp_clf.fit(train_X, train_Y)
-                for train, test in kfold.split(train_X, train_Y):
-                    	temp_model = classification_method(n_estimators=50)
-                    	temp_model.fit(train_X[train], train_Y[train])
-                    	scores = temp_model.score(train_X[test], train_Y[test])
-                    	cvscores.append(scores)
-                threshold = np.mean(cvscores) + 2.33*np.std(scores)
-                
-                num = 0
-                scores = np.zeros(first_training_index)
-                for p in range(0,first_training_index):
-                    scores[p] = temp_clf.score(scaler.transform(batch_X[p]),batch_Y[p])
-        
-                maxs = scores.argsort()[-int(len(scores)*0.1):][::-2]
-                
-                for p in maxs:
-                    if temp_clf.score(scaler.transform(batch_X[p]),batch_Y[p])>threshold and p>int(len(scores)/2):
-                        train_X = np.concatenate([train_X,scaler.transform(batch_X[p])])
-                        train_Y = np.concatenate([train_Y,batch_Y[p]])
-                        num+=1
-                
-                print(str(num)+' previous batches appended')
-    
+
             clf2.fit(train_X, train_Y)
             first_undrift_index = i-np.max([i-first_training_index,label_lag])
             warning_index = []

@@ -397,6 +397,12 @@ for i in range(len(image_batches)):
         print('CHANGE DETECTED at '+str(i))
         drift_list.append(i)
         print('retrain starting dataset index '+ str(first_training_index))
+        model_f = models.Net_f(outdim=outdim).cuda()
+        model_c = models.Net_c_cway(outdim=outdim).cuda()
+        model_de = models.decoder(outdim=outdim).cuda()
+        optimizer_f = torch.optim.Adam(model_f.parameters(), 0.001)
+        optimizer_c = torch.optim.Adam(model_c.parameters(), 0.001)
+        optimizer_de = torch.optim.Adam(model_de.parameters(), 0.001)
         train_xs, train_ys = [], []
         train_xtogether, train_ytogether = [], []
         for j in range(first_training_index, i):
@@ -404,6 +410,7 @@ for i in range(len(image_batches)):
             train_ys.append(previous_ys[j-label_lag])
             train_xtogether.append(previous_xs[j-label_lag])
             train_ytogether.append(previous_ys[j-label_lag])
+        train_clf(model_f, model_c, train_xs, train_ys)
         model_f = models.Net_f(outdim=outdim).cuda()
         model_c = models.Net_c_cway(outdim=outdim).cuda()
         model_de = models.decoder(outdim=outdim).cuda()
