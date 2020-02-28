@@ -30,7 +30,7 @@ python drift_experiment_structured.py --model ours --classifier lgbm --dataset e
 
 arguments: 
 - model: ['ours', 'ourslinear', 'ddm', 'ph','adwin','ewma'], default='ours'
-- classifier: ['lgbm', 'lstm', 'xgb','rf'], default='lgbm'
+- classifier: ['lgbm', 'lstm', 'xgb','rf','ffn'], default='ffn'
 - dataset: ['elec', 'sea', 'rbf','hyperplane','weather','weather2'], default='sea'
 - batch_size, default=64
 - lstm_ae, default=1, (use lstm as autoencoder)
