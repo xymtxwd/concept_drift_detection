@@ -34,7 +34,7 @@ import torch.distributions as td
 from torch.autograd import Variable
 from sklearn.metrics import accuracy_score
 import os
-from optimizers import KFACOptimizer
+from optimizers.kfac import KFACOptimizer
 import torch
 import torch.nn as nn
 import torch.optim as optim
