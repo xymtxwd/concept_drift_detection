@@ -22,31 +22,35 @@ import xgboost as xgb
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers import LSTM
+from datasets.get_dataset import get_dataset
 import time
 import argparse
-import os
-import numpy as np
 import torch
-from torch import nn
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optimizer
-from datasets.get_dataset import get_dataset
 import models
+import utils
 import torch.distributions as td
 from torch.autograd import Variable
 from sklearn.metrics import accuracy_score
-from spn.algorithms.LearningWrappers import learn_parametric, learn_classifier
-from spn.structure.leaves.parametric.Parametric import Categorical, Gaussian
-from spn.structure.Base import Context
-from spn.algorithms.MPE import mpe
+import os
+from optimizers.kfac import KFACOptimizer
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.optim.lr_scheduler import MultiStepLR
+from utils_KFAC.network_utils import get_network
+from utils_KFAC.data_utils import get_dataloader
 from spn.algorithms.layerwise.distributions import Normal
 from spn.algorithms.layerwise.layers import Sum, Product
+import torch
+from torch import nn
 from spn.algorithms.layerwise.clipper import DistributionClipper
+
 import argparse
 parser = argparse.ArgumentParser(description='Online Concept Drift Detection')
 parser.add_argument('--model', choices=['ours', 'ddm', 'ph','adwin','ewma'], default='ours', help='type of model')
-#parser.add_argument('--classifier', choices=['lgbm', 'lstm', 'xgb','rf'], default='lgbm', help='type of classifier')
 parser.add_argument('--batch-size', type=int, default=64, metavar='N', help='batch size (default: 64)')
 args = parser.parse_args()
 
@@ -54,11 +58,42 @@ np.random.seed(0)
 print('Load data')
 
 
+
 task = 'm2u'
 batch_size = 64
 outdim = 50
 initial_batches = 50
 label_lag = 3
+criterion_cel = nn.CrossEntropyLoss()
+
+def nn_score(model_f, model_c, train_xs, train_ys, train_xt, train_yt, drift_num):
+    pred_y = []
+    correct = 0
+    count = 0
+    for i in range(len(train_xs)):
+        data_s = train_xs[i]
+        target_s = train_ys[i]
+        data_s, target_s = data_s.cuda(), target_s.cuda(non_blocking=True)
+        feature_s = model_f(data_s)
+        output = model_c(feature_s)
+        pred = output.max(1, keepdim=True)[1]
+        for i in range(len(pred)):
+            pred_y.append(pred[i].item())
+        correct += pred.eq(target_s.view_as(pred)).sum().item()
+        count += len(target_s)
+    if len(train_xt)!=0:
+        for i in range(len(train_xt)):
+            data_t = train_xt[i]
+            target_t = train_yt[i]
+            data_t, target_t = data_t.cuda(), target_t.cuda(non_blocking=True)
+            feature_t = model_f(data_t)
+            output = model_c(feature_t)
+            pred = output.max(1, keepdim=True)[1]
+            for i in range(len(pred)):
+                pred_y.append(pred[i].item())
+            correct += pred.eq(target_t.view_as(pred)).sum().item()
+            count += len(target_t)
+    return correct*1.0/count
 
 ### DDM in batch
 if args.model=='ddm':
@@ -516,7 +551,6 @@ if args.model=='ewma':
     
     print(np.mean(prequential_acc))
 
-
 ### our drift detection model
 if args.model=='ours':
     task = 'm2u'
@@ -568,8 +602,17 @@ if args.model=='ours':
     previous_xt, previous_yt = [], []
     no_drift_count = 0
     
-    q1_list,q2_list,q3_list,qAE_list,qspn_list = [],[],[],[],[]
-        
+    q1_list,q2_list,q3_list,qAE_list,qspn_list,qFS_list = [],[],[],[],[],[]
+
+    kfac_optim = KFACOptimizer(nn.Sequential(model_f,model_c),
+                              lr=0.01,
+                              momentum=0.9,
+                              stat_decay=0.95,
+                              damping=1e-3,
+                              kl_clip=1e-2,
+                              weight_decay=3e-3,
+                              TCov=10,
+                              TInv=100)
     dd = DDM(3,2)
     warning_index = []
     dd_2 = DDM(3,2)
@@ -582,9 +625,9 @@ if args.model=='ours':
     warning_index_spn = []
     dd_FS = DDM(3,2)
     warning_index_FS = []
-    q1_drift, q2_drift, q3_drift, qAE_drift,qspn_drift = False, False, False, False, False
+    q1_drift, q2_drift, q3_drift, qAE_drift,qspn_drift,qFS_drift = False, False, False, False, False, False
     first_training_index = sys.maxsize
-    drift_1, drift_2, drift_3, drift_AE, drift_spn = [],[],[],[],[]
+    drift_1, drift_2, drift_3, drift_AE, drift_spn, drift_FS = [],[],[],[],[],[]
     
     drift_list = []
     prequential_acc = []
@@ -687,6 +730,8 @@ if args.model=='ours':
         return loss.item()
     
     
+    ### start monitoring
+    
     sample_count = 0
     
     for i in range(initial_batches + label_lag, n_batch):
@@ -734,6 +779,26 @@ if args.model=='ours':
         q3_list.append(Q4u(previous_xtogether, train_xtogether[-50:], model_f))
         qAE_list.append(math.tanh(test_ae(model_f, model_de, previous_xtogether[-1])/AE_tr_err/2))
         qspn_list.append(np.log(test_spn(model_f, spn, previous_xtogether[-1])))
+
+        # compute true fisher
+        kfac_optim.zero_grad()
+        feat = model_f(previous_xtogether[-1-label_lag].cuda())
+        outputs = model_c(feat)
+        loss = criterion_cel(F.softmax(outputs), previous_ytogether[-1-label_lag].cuda())
+
+        kfac_optim.acc_stats = True
+        with torch.no_grad():
+            sampled_y = torch.multinomial(torch.nn.functional.softmax(outputs.cpu().data, dim=1), 1).squeeze().cuda()
+        loss_sample = criterion_cel(F.softmax(outputs), sampled_y)
+        loss_sample.backward(retain_graph=True)
+        #loss_sample.backward()
+        kfac_optim.acc_stats = False
+        kfac_optim.zero_grad()  # clear the gradient for computing true-fisher.
+        loss.backward()
+        fisher_score = kfac_optim.step()
+
+        qFS_list.append(fisher_score)
+
         prequential_acc.append(nn_score(model_f, model_c, [previous_xtogether[-1]], [previous_ytogether[-1]], [], [], 0))
         if q1_drift == False:
             if dd.set_input(q1_list[-1])==True:
@@ -785,20 +850,23 @@ if args.model=='ours':
                 drift_spn.append(i)
             elif dd_spn.is_warning_zone:
                 warning_index_spn.append(i)
-    
+        if qFS_drift == False:
+            if dd_FS.set_input(qFS_list[-1])==True:
+                qFS_drift=True
+                if warning_index_FS!=[]:
+                    first_training_index = np.min([first_training_index, keep_last_consecutive(warning_index_FS)[0]]) 
+                else:
+                    first_training_index = np.min([first_training_index, i]) 
+                drift_FS.append(i)
+            elif dd_FS.is_warning_zone:
+                warning_index_FS.append(i)
         # determine if drift has occurred by tailored majority voting
-        if q1_drift*3+q2_drift*1+q3_drift*1+qAE_drift*1+qspn_drift*1>=3:
+        if q1_drift*3+q2_drift*1+q3_drift*1+qAE_drift*1+qspn_drift*1+qFS_drift*1>=3:
             first_training_index = np.min([first_training_index, i-label_lag])
             start_time = time.time()
             print('CHANGE DETECTED at '+str(i))
             drift_list.append(i)
             print('retrain starting dataset index '+ str(first_training_index))
-            model_f = models.Net_f(task=task, outdim=outdim).cuda()
-            model_c = models.Net_c_cway(task=task, outdim=outdim).cuda()
-            model_de = models.decoder(task=task, outdim=outdim).cuda()
-            optimizer_f = torch.optim.Adam(model_f.parameters(), 0.001)
-            optimizer_c = torch.optim.Adam(model_c.parameters(), 0.001)
-            optimizer_de = torch.optim.Adam(model_de.parameters(), 0.001)
             train_xs, train_ys = [], []
             train_xt, train_yt = [], []
             train_xtogether, train_ytogether = [], []
@@ -813,45 +881,6 @@ if args.model=='ours':
                     train_ytogether.append(torch.cat([previous_ys[j-(initial_batches + label_lag)],previous_yt[j-(initial_batches + label_lag)]]))
                     train_xt.append(previous_xt[j-(initial_batches + label_lag)])
                     train_yt.append(previous_yt[j-(initial_batches + label_lag)])
-            train_clf(model_f, model_c, train_xs, train_ys, train_xt, train_yt, drift_num, optimizer_f, optimizer_c)
-            # data augmentation - add some previous data whose distribution differs less from the current training data
-            if True:
-                from sklearn.model_selection import StratifiedKFold
-                kfold = StratifiedKFold(n_splits=5, shuffle=True)
-                cvscores = []
-                one_train_xtogether = torch.cat(train_xtogether).cpu().numpy()
-                one_train_ytogether = torch.cat(train_ytogether).cpu().numpy()
-                for train, test in kfold.split(one_train_xtogether, one_train_ytogether):
-                    tmp_model_f = models.Net_f(task=task, outdim=outdim).cuda()
-                    tmp_model_c = models.Net_c_cway(task=task, outdim=outdim).cuda()
-                    tmp_optimizer_f = torch.optim.Adam(model_f.parameters(), 0.001)
-                    tmp_optimizer_c = torch.optim.Adam(model_c.parameters(), 0.001)
-                    tx, ty = [], []
-                    trx_sub, try_sub = one_train_xtogether[train], one_train_ytogether[train]
-                    for ind__ in range(int(len(train)/batch_size)):
-                        tx.append(torch.tensor(trx_sub[ind__*batch_size:(ind__+1)*batch_size]))
-                        ty.append(torch.tensor(try_sub[ind__*batch_size:(ind__+1)*batch_size]))
-                        if ind__== int(len(train)/batch_size)-1 and len(train)%batch_size!=0:
-                            if len(train)%batch_size==1: continue
-                            else:
-                                tx.append(torch.tensor(trx_sub[(ind__+1)*batch_size:]))
-                                ty.append(torch.tensor(try_sub[(ind__+1)*batch_size:]))
-                    train_clf(tmp_model_f, tmp_model_c, tx, ty, [], [], drift_num, tmp_optimizer_f, tmp_optimizer_c)
-                    scores = nn_score(model_f, model_c, [torch.tensor(one_train_xtogether[test])], [torch.tensor(one_train_ytogether[test])], [], [], 0)
-                    cvscores.append(scores)
-                # if accuracy for a batch is larger than the threshold, consider including it
-                threshold = np.mean(cvscores) + 1.65*np.std(scores)
-                num = 0
-                scores = np.zeros(len(previous_ytogether))
-                for p in range(0,len(scores)):
-                    scores[p] = nn_score(model_f, model_c, [previous_xtogether[p]], [previous_ytogether[p]], [], [], 0)
-                maxs = scores.argsort()[-int(len(scores)*0.1):][::-2]
-                for p in maxs:
-                    if nn_score(model_f, model_c, [previous_xtogether[p]], [previous_ytogether[p]], [], [], 0)>threshold:
-                        train_xtogether.append(previous_xtogether[p])
-                        train_ytogether.append(previous_ytogether[p])
-                        num+=1
-                print(str(num)+' previous batches appended')
             # retrain the model
             model_f = models.Net_f(task=task, outdim=outdim).cuda()
             model_c = models.Net_c_cway(task=task, outdim=outdim).cuda()
@@ -860,17 +889,39 @@ if args.model=='ours':
             optimizer_c = torch.optim.Adam(model_c.parameters(), 0.001)
             optimizer_de = torch.optim.Adam(model_de.parameters(), 0.001)
             train_clf(model_f, model_c, train_xtogether, train_ytogether, [], [], drift_num, optimizer_f, optimizer_c)
+
             AE_tr_err = train_ae(model_f, model_de, train_xs, train_xt, drift_num)
-            first_undrift_index = i-np.max([i-first_training_index,label_lag])
             warning_index = []
             warning_index_2 = []
             warning_index_3 = []
             warning_index_AE = []
             warning_index_spn = []
-            q1_drift, q2_drift, q3_drift, qAE_drift, qspn_drift = False, False, False, False, False
+            warning_index_FS = []
+            q1_drift, q2_drift, q3_drift, qAE_drift, qspn_drift, qFS_drift = False, False, False, False, False, False
+    
+            kfac_optim = KFACOptimizer(nn.Sequential(model_f,model_c),
+                                          lr=0.01,
+                                          momentum=0.9,
+                                          stat_decay=0.95,
+                                          damping=1e-3,
+                                          kl_clip=1e-2,
+                                          weight_decay=3e-3,
+                                          TCov=10,
+                                          TInv=100)
+    
+            gauss = Normal(multiplicity=5, in_features=50)
+            prod1 = Product(in_features=50, cardinality=5)
+            sum1 = Sum(in_features=10, in_channels=5, out_channels=1)
+            prod2 = Product(in_features=10, cardinality=10)
+            spn = nn.Sequential(gauss, prod1, sum1, prod2).cuda()
+            clipper = DistributionClipper()
+            optimizer_spn = torch.optim.Adam(spn.parameters(), lr=0.001)
+            optimizer_spn.zero_grad()
+            train_spn(model_f, spn, train_xs)
+    
             retraining_time += (time.time() - start_time)
             first_training_index = sys.maxsize
-        print(i)
+            print(i)
     print(np.mean(prequential_acc))
     
     import matplotlib
@@ -892,10 +943,14 @@ if args.model=='ours':
     plt.plot(qspn_list)
     plt.savefig('qspn_list')
     plt.clf()
+    plt.plot(qFS_list)
+    plt.savefig('qFS_list')
+    plt.clf()
     print(drift_list)
     print(drift_1)
     print(drift_2)
     print(drift_3)
     print(drift_AE)
     print(drift_spn)
+    print(drift_FS)
     

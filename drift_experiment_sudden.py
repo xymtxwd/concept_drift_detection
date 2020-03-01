@@ -160,27 +160,20 @@ if args.model=='ddm':
     previous_xt, previous_yt = [], []
     no_drift_count = 0
     
-    if True:
-        if True:
-            drift_num = 10
-            _, target_dataset = get_dataset(task, drift_num)
-            target_loader = torch.utils.data.DataLoader(target_dataset, batch_size=batch_size*2, shuffle=False, num_workers=0)
-            dl_target = iter(target_loader)
-            sample_count = 0
-    
-    
     for i in range(initial_batches + label_lag, n_batch):
+        if (i-(initial_batches + label_lag)+1)%100 == 0:
+            drift_num += 1
+            _, target_dataset = get_dataset(task, drift_num)
+            target_loader = torch.utils.data.DataLoader(target_dataset, batch_size=int(batch_size*1.0*drift_num/10), shuffle=False, num_workers=0)
+            dl_target = iter(target_loader)
+            print(drift_num)
+            print(np.mean(prequential_acc))
+    
         batch_xs, batch_ys = next(dl_source)
         previous_xs.append(batch_xs)
         previous_ys.append(batch_ys)
-        sample_count += 1
         if drift_num != 0:
-            try:
-                batch_xt, batch_yt = next(dl_target)
-            except StopIteration:
-                dl_target = iter(target_loader)
-                batch_xt, batch_yt = next(dl_target)
-            batch_xt, batch_yt = batch_xt[:int(sample_count/8+2)], batch_yt[:int(sample_count/8+2)]
+            batch_xt, batch_yt = next(dl_target)
             previous_xt.append(batch_xt)
             previous_yt.append(batch_yt)
             prequential_acc.append(nn_score(model_f, model_c, [batch_xs], [batch_ys], [batch_xt], [batch_yt], drift_num))
@@ -269,27 +262,17 @@ if args.model=='ph':
     previous_xt, previous_yt = [], []
     no_drift_count = 0
     
-    if True:
-        if True:
-            drift_num = 10
-            _, target_dataset = get_dataset(task, drift_num)
-            target_loader = torch.utils.data.DataLoader(target_dataset, batch_size=batch_size*2, shuffle=False, num_workers=0)
-            dl_target = iter(target_loader)
-            sample_count = 0
-    
-    
     for i in range(initial_batches + label_lag, n_batch):
+        if (i-(initial_batches + label_lag)+1)%100 == 0:
+            drift_num += 1
+            _, target_dataset = get_dataset(task, drift_num)
+            target_loader = torch.utils.data.DataLoader(target_dataset, batch_size=int(batch_size*1.0*drift_num/10), shuffle=False, num_workers=0)
+            dl_target = iter(target_loader)
         batch_xs, batch_ys = next(dl_source)
         previous_xs.append(batch_xs)
         previous_ys.append(batch_ys)
-        sample_count += 1
         if drift_num != 0:
-            try:
-                batch_xt, batch_yt = next(dl_target)
-            except StopIteration:
-                dl_target = iter(target_loader)
-                batch_xt, batch_yt = next(dl_target)
-            batch_xt, batch_yt = batch_xt[:int(sample_count/8+2)], batch_yt[:int(sample_count/8+2)]
+            batch_xt, batch_yt = next(dl_target)
             previous_xt.append(batch_xt)
             previous_yt.append(batch_yt)
             prequential_acc.append(nn_score(model_f, model_c, [batch_xs], [batch_ys], [batch_xt], [batch_yt], drift_num))
@@ -381,27 +364,17 @@ if args.model=='adwin':
     previous_xt, previous_yt = [], []
     no_drift_count = 0
     
-    if True:
-        if True:
-            drift_num = 10
-            _, target_dataset = get_dataset(task, drift_num)
-            target_loader = torch.utils.data.DataLoader(target_dataset, batch_size=batch_size*2, shuffle=False, num_workers=0)
-            dl_target = iter(target_loader)
-            sample_count = 0
-    
-    
     for i in range(initial_batches + label_lag, n_batch):
+        if (i-(initial_batches + label_lag)+1)%100 == 0:
+            drift_num += 1
+            _, target_dataset = get_dataset(task, drift_num)
+            target_loader = torch.utils.data.DataLoader(target_dataset, batch_size=int(batch_size*1.0*drift_num/10), shuffle=False, num_workers=0)
+            dl_target = iter(target_loader)
         batch_xs, batch_ys = next(dl_source)
         previous_xs.append(batch_xs)
         previous_ys.append(batch_ys)
-        sample_count += 1
         if drift_num != 0:
-            try:
-                batch_xt, batch_yt = next(dl_target)
-            except StopIteration:
-                dl_target = iter(target_loader)
-                batch_xt, batch_yt = next(dl_target)
-            batch_xt, batch_yt = batch_xt[:int(sample_count/8+2)], batch_yt[:int(sample_count/8+2)]
+            batch_xt, batch_yt = next(dl_target)
             previous_xt.append(batch_xt)
             previous_yt.append(batch_yt)
             prequential_acc.append(nn_score(model_f, model_c, [batch_xs], [batch_ys], [batch_xt], [batch_yt], drift_num))
@@ -484,27 +457,18 @@ if args.model=='ewma':
     previous_xs, previous_ys = [], []
     previous_xt, previous_yt = [], []
     no_drift_count = 0
-    if True:
-        if True:
-            drift_num = 10
-            _, target_dataset = get_dataset(task, drift_num)
-            target_loader = torch.utils.data.DataLoader(target_dataset, batch_size=batch_size*2, shuffle=False, num_workers=0)
-            dl_target = iter(target_loader)
-            sample_count = 0
-    
     
     for i in range(initial_batches + label_lag, n_batch):
+        if (i-(initial_batches + label_lag)+1)%100 == 0:
+            drift_num += 1
+            _, target_dataset = get_dataset(task, drift_num)
+            target_loader = torch.utils.data.DataLoader(target_dataset, batch_size=int(batch_size*1.0*drift_num/10), shuffle=False, num_workers=0)
+            dl_target = iter(target_loader)
         batch_xs, batch_ys = next(dl_source)
         previous_xs.append(batch_xs)
         previous_ys.append(batch_ys)
-        sample_count += 1
         if drift_num != 0:
-            try:
-                batch_xt, batch_yt = next(dl_target)
-            except StopIteration:
-                dl_target = iter(target_loader)
-                batch_xt, batch_yt = next(dl_target)
-            batch_xt, batch_yt = batch_xt[:int(sample_count/8+2)], batch_yt[:int(sample_count/8+2)]
+            batch_xt, batch_yt = next(dl_target)
             previous_xt.append(batch_xt)
             previous_yt.append(batch_yt)
             prequential_acc.append(nn_score(model_f, model_c, [batch_xs], [batch_ys], [batch_xt], [batch_yt], drift_num))
@@ -727,28 +691,21 @@ if args.model=='ours':
     
     
     ### start monitoring
-    
-    if True:
-        if True:
-            drift_num = 10
-            _, target_dataset = get_dataset(task, drift_num)
-            target_loader = torch.utils.data.DataLoader(target_dataset, batch_size=batch_size*2, shuffle=False, num_workers=0)
-            dl_target = iter(target_loader)
-            sample_count = 0
-    
-    
     for i in range(initial_batches + label_lag, n_batch):
+        # add drift after each 100 batches, by adding one digit from USPS dataset to MNIST dataset
+        if (i-(initial_batches + label_lag)+1)%100 == 0:
+            drift_num += 1
+            _, target_dataset = get_dataset(task, drift_num)
+            target_loader = torch.utils.data.DataLoader(target_dataset, batch_size=int(batch_size*1.0*drift_num/10), shuffle=False, num_workers=0)
+            dl_target = iter(target_loader)
+            print('Drift ' + str(drift_num))
+            print(np.mean(prequential_acc))
+        # system receives a batch
         batch_xs, batch_ys = next(dl_source)
         previous_xs.append(batch_xs)
         previous_ys.append(batch_ys)
-        sample_count += 1
         if drift_num != 0:
-            try:
-                batch_xt, batch_yt = next(dl_target)
-            except StopIteration:
-                dl_target = iter(target_loader)
-                batch_xt, batch_yt = next(dl_target)
-            batch_xt, batch_yt = batch_xt[:int(sample_count/8+2)], batch_yt[:int(sample_count/8+2)]
+            batch_xt, batch_yt = next(dl_target)
             previous_xt.append(batch_xt)
             previous_yt.append(batch_yt)
             prequential_acc.append(nn_score(model_f, model_c, [batch_xs], [batch_ys], [batch_xt], [batch_yt], drift_num))
@@ -949,3 +906,4 @@ if args.model=='ours':
     print(drift_spn)
     print(drift_FS)
     
+
