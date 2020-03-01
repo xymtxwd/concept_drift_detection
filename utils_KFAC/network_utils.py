@@ -8,8 +8,8 @@ def get_network(network, **kwargs):
         'alexnet': alexnet,
         'densenet': densenet,
         'resnet': resnet,
-        'vgg16_bn': vgg16_bn,
-        'vgg19_bn': vgg19_bn,
+        #'vgg16_bn': vgg16_bn,
+        #'vgg19_bn': vgg19_bn,
         'wrn': wrn
 
     }
