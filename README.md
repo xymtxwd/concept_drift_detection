@@ -39,11 +39,11 @@ Our evaluation metric is the average accuracy in this data flow.
 
 # Unstructured data experiments (images)
 
-In the deep learning setting, we utilize the conventional MNIST and USPS datasets in domain adaptation to validate our framework. The two digits datasets contain 10 same classes, i.e. digits 0-9, but their distributions differ. In our experiments, we use MNIST as the 'base' (or 'source') dataset, i.e. any incoming batch will contain MNIST 0-9. USPS is used as the 'drift' (or 'target') dataset, i.e. after each 100 batches, a digit will be added to the incoming data distribution. For example, at batch # 80, all samples are MNIST digits. At batch # 180, however, USPS digit 0 samples will be available. 
+In the deep learning setting, we utilize the conventional MNIST and USPS datasets in domain adaptation to validate our framework. The two digits datasets contain 10 same classes, i.e. digits 0-9, but their distributions differ. In our experiments, we use MNIST as the 'base' (or 'source') dataset, i.e. any incoming batch will contain MNIST 0-9. USPS is used as the 'drift' (or 'target') dataset, i.e. after each 100 batches, a digit will be gradually added to the incoming data distribution. For example, at batch # 80, all samples are MNIST digits. At batch # 180, however, USPS digit 0 samples will be available. 
 
 
 ```
-python drift_experiment.py --model ours
+python drift_experiment_gradual_and_sudden.py --model ours
 ```
 
 arguments: 
@@ -68,7 +68,7 @@ In line 143 (image encoder) 144(classifier) 145(image decoder), you need to chan
 
 `drift_experiment_structured.py`: main file to run for structured drift detection experiment
 
-`drift_experiment.py`: main file to run for unstructured drift detection experiment
+`drift_experiment_gradual_and_sudden.py`: main file to run for unstructured drift detection experiment
 
 `inference_image.py`: main file to run for inference
 
