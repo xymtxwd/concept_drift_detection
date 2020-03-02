@@ -48,11 +48,6 @@ from torch import nn
 from spn.algorithms.layerwise.clipper import DistributionClipper
 
 
-parser = argparse.ArgumentParser(description='Online Concept Drift Detection')
-parser.add_argument('--classifier', choices=['lgbm', 'xgb','rf','ffn'], default='lgbm',
-                    help='type of classifier')
-args = parser.parse_args()
-
 np.random.seed(0)
 
 print('Load data')
@@ -61,11 +56,12 @@ print('Load data')
 batches = []
 batch_X = []
 batch_Y = []
-with open('image_folder_addresses.txt') as f:
+with open('file_addresses.txt') as f:
     for line in f:
-        data = np.loadtxt(line)
+        l = line.replace('\n','')
+        data = np.loadtxt(l)
         X = data[:,:-1]
-        Y = data[:,-1]
+        Y = data[:,-1].astype(int)
         batches.append([X, Y])
         batch_X.append(X)
         batch_Y.append(Y)
@@ -75,7 +71,7 @@ with open('image_folder_addresses.txt') as f:
 n_batch = len(batches)
 
 ### use how many batches to train initially
-train_batch_num = 50
+train_batch_num = 10
 label_lag = 3
 
     
@@ -142,14 +138,7 @@ class ffn_classifier:
 
     
 
-if args.classifier=='lgbm':
-    classification_method = lgb.LGBMClassifier
-if args.classifier=='rf':
-    classification_method = RandomForestClassifier
-if args.classifier=='xgb':
-    classification_method = xgb.XGBClassifier
-if args.classifier=='ffn':
-    classification_method = ffn_classifier
+classification_method = ffn_classifier
     
 if True:
     
