@@ -153,7 +153,7 @@ optimizer_de = torch.optim.Adam(model_de.parameters(), 0.001)
 image_batches = []
 with open('imagefile.txt') as f:
     for line in f:
-        temp_dataset = tvd.ImageFolder(root=line.replace('/n',''), transform=tv.transforms.Compose([tv.transforms.Grayscale(num_output_channels=1), tv.transforms.ToTensor()]))
+        temp_dataset = tvd.ImageFolder(root=line.replace('\n',''), transform=tv.transforms.Compose([tv.transforms.Grayscale(num_output_channels=1), tv.transforms.ToTensor()]))
         temp_loader = torch.utils.data.DataLoader(temp_dataset, batch_size=len(temp_dataset), shuffle=False, num_workers=0)
         temp_dl = iter(temp_loader)
         data_s, target_s = next(temp_dl)
