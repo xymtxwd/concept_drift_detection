@@ -53,7 +53,8 @@ from spn.algorithms.layerwise.layers import Sum, Product
 import torch
 from torch import nn
 from spn.algorithms.layerwise.clipper import DistributionClipper
-import torchvision.datasets as td
+import torchvision.datasets as tvd
+import torchvision as tv
 from keras.layers import Input, Dense
 from keras.models import Model
 from keras import regularizers
@@ -102,7 +103,7 @@ def train_clf(model_f, model_c, train_xs, train_ys):
     model_f.train()
     model_c.train()
     if True:
-        for t in range(20):
+        for t in range(50):
             for i in range(len(train_xs)):
                 data_s = train_xs[i]
                 target_s = train_ys[i]
@@ -117,7 +118,7 @@ def train_clf(model_f, model_c, train_xs, train_ys):
                 optimizer_c.step()
                 optimizer_f.zero_grad()
                 optimizer_c.zero_grad()
-                #print(loss.item())
+                print(loss.item())
 
 def nn_score(model_f, model_c, train_xs, train_ys):
     pred_y = []
@@ -150,16 +151,16 @@ optimizer_de = torch.optim.Adam(model_de.parameters(), 0.001)
 ### change .txt file name, this .txt file should contains one image folder address per line. Please also prepare the image folders in the correct format 
 ### Please refer to https://pytorch.org/tutorials/beginner/data_loading_tutorial.html#afterword-torchvision
 image_batches = []
-with open('image_folder_addresses.txt') as f:
+with open('imagefile.txt') as f:
     for line in f:
-        temp_dataset = td.ImageFolder(root=line)
+        temp_dataset = tvd.ImageFolder(root=line.replace('/n',''), transform=tv.transforms.Compose([tv.transforms.Grayscale(num_output_channels=1), tv.transforms.ToTensor()]))
         temp_loader = torch.utils.data.DataLoader(temp_dataset, batch_size=len(temp_dataset), shuffle=False, num_workers=0)
         temp_dl = iter(temp_loader)
         data_s, target_s = next(temp_dl)
         image_batches.append([data_s, target_s])
 
 ### use how many batches to train initially
-train_batch_num = 50
+train_batch_num = 3
 
 
 use_kfac = True
@@ -301,14 +302,14 @@ for i in range(len(image_batches)):
         previous_ytogether.append(batch_ys)
         data_X = previous_xs
         data_Y = previous_ys
-    q1_list.append(Q1u(previous_xtogether, previous_ytogether, label_lag, model_f,model_c,window_size=window_size,alpha=alpha, beta=beta, p1_p2_weights=p1_p2_weights))#*0.99+Q2u(previous_xtogether, label_lag, train_xtogether[-50:], model_f)*0.01)
+    q1_list.append(Q1u(previous_xtogether, previous_ytogether, label_lag, model_f,model_c,window_size=window_size,alpha=alpha, beta=beta, p1_p2_weights=p1_p2_weights))
     q2_list.append(Q3u(previous_xtogether, model_f, model_c))
     q3_list.append(Q4u(previous_xtogether, train_xtogether[-50:], model_f))
     qAE_list.append(math.tanh(test_ae(model_f, model_de, previous_xtogether[-1])/AE_tr_err/2))
     #qAE_list.append(math.tanh(test_ae(model_f, model_de, previous_xtogether[-1])))
     qspn_list.append(np.log(test_spn(model_f, spn, previous_xtogether[-1])))
 
-    if use_kfac:# and kfac_optim.steps % kfac_optim.TCov == 0:
+    if use_kfac and label_lag+1<len(previous_xtogether):# and kfac_optim.steps % kfac_optim.TCov == 0:
         # compute true fisher
         kfac_optim.zero_grad()
         feat = model_f(previous_xtogether[-1-label_lag].cuda())
@@ -326,10 +327,11 @@ for i in range(len(image_batches)):
         kfac_optim.zero_grad()  # clear the gradient for computing true-fisher.
         loss.backward()
         fisher_score = kfac_optim.step()
-
+    else:
+        fisher_score = 0.0
     qFS_list.append(fisher_score)
 
-    prequential_acc.append(nn_score(model_f, model_c, [previous_xtogether[-1]], [previous_ytogether[-1]], [], [], 0))
+    prequential_acc.append(nn_score(model_f, model_c, [previous_xtogether[-1]], [previous_ytogether[-1]]))
     if q1_drift == False:
         if dd.set_input(q1_list[-1])==True:
             q1_drift=True
