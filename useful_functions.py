@@ -419,11 +419,11 @@ def Q1(data_X, data_Y, label_lag, train_X, train_Y, clf, alpha=0.5, beta=0.5, wi
     current_Y_available = False if label_lag>0 else True
     if current_Y_available: 
         return 1 - clf.score(data_X[-1],data_Y[-1])
-    if len(data_X)==0: print('no inputs!')
+    if len(data_X)==0: return 0.0#print('no inputs!')
     
     if len(data_X)<window_size+label_lag:
         window_size=len(data_X)-label_lag
-    if window_size<=0: print('len(data_X)<label_lag!')
+    if window_size<=0: return 0.0#print('len(data_X)<label_lag!')
     
     p1_weights = np.zeros(window_size)
     p1_weights[-1] = beta
@@ -470,10 +470,10 @@ def Q1u(data_X, data_Y, label_lag, model_f, clf, alpha=0.5, beta=0.5, window_siz
     current_Y_available = False if label_lag>0 else True
     if current_Y_available: 
         return 1 - nn_score(model_f, clf, [data_X[-1]], [data_Y[-1]], [], [], 0)
-    if len(data_X)==0: print('no inputs!')
+    if len(data_X)==0: return 0.0#print('no inputs!')
     if len(data_X)<window_size+label_lag:
         window_size=len(data_X)-label_lag
-    if window_size<=0: print('len(data_X)<label_lag!')
+    if window_size<=0: return 0.0#print('len(data_X)<label_lag!')
     if False:
         p1_weights = np.zeros(window_size)
         p1_weights[-1] = beta
