@@ -97,8 +97,7 @@ class Net_f(nn.Module):
 class Net_c_cway(nn.Module):
     def __init__(self, task='s2m', outdim=500):
         super(Net_c_cway, self).__init__()
-        if task =='u2m' or task == 'm2u':
-            self.classifier = Classifier_u2m(10, outdim=outdim)
+        self.classifier = Classifier_u2m(10, outdim=outdim)
                 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
