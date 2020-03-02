@@ -411,7 +411,7 @@ for i in range(len(image_batches)):
         optimizer_c = torch.optim.Adam(model_c.parameters(), 0.001)
         optimizer_de = torch.optim.Adam(model_de.parameters(), 0.001)
         train_clf(model_f, model_c, train_xtogether, train_ytogether)
-        AE_tr_err = train_ae(model_f, model_de, train_xs, train_xt, drift_num)
+        AE_tr_err = train_ae(model_f, model_de, train_xs)
         warning_index = []
         warning_index_2 = []
         warning_index_3 = []
