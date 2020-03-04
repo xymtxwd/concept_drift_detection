@@ -52,20 +52,23 @@ np.random.seed(0)
 
 print('Load data')
 
-### change .txt file name, this .txt file should contain one file address per line. The last column of the file is the label 
+### The last column of the file is the label 
 batches = []
 batch_X = []
 batch_Y = []
-with open('file_addresses.txt') as f:
-    for line in f:
-        l = line.replace('\n','')
-        data = np.loadtxt(l)
+
+#change 'test' to any dir which contains your batches
+data_dir = os.getcwd()+'/test'
+for s in sorted(os.listdir(data_dir)):
+    if s.startswith('batch'):
+        data = np.loadtxt(data_dir+'/'+s+'/'+os.listdir(data_dir+'/'+s+'/')[0])
         X = data[:,:-1]
         Y = data[:,-1].astype(int)
         batches.append([X, Y])
         batch_X.append(X)
         batch_Y.append(Y)
     
+
 
 
 n_batch = len(batches)
