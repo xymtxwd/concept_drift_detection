@@ -148,16 +148,23 @@ optimizer_f = torch.optim.Adam(model_f.parameters(), 0.001)
 optimizer_c = torch.optim.Adam(model_c.parameters(), 0.001)
 optimizer_de = torch.optim.Adam(model_de.parameters(), 0.001)
 
-### change .txt file name, this .txt file should contains one image folder address per line. Please also prepare the image folders in the correct format 
+### Please prepare the image folders in the correct format 
 ### Please refer to https://pytorch.org/tutorials/beginner/data_loading_tutorial.html#afterword-torchvision
 image_batches = []
-with open('imagefile.txt') as f:
-    for line in f:
-        temp_dataset = tvd.ImageFolder(root=line.replace('\n',''), transform=tv.transforms.Compose([tv.transforms.Grayscale(num_output_channels=1), tv.transforms.ToTensor()]))
-        temp_loader = torch.utils.data.DataLoader(temp_dataset, batch_size=len(temp_dataset), shuffle=False, num_workers=0)
-        temp_dl = iter(temp_loader)
-        data_s, target_s = next(temp_dl)
-        image_batches.append([data_s, target_s])
+image_dirs = []
+
+#change 'test' to any dir which contains your batches
+data_dir = os.getcwd()+'/test'
+for s in sorted(os.listdir(data_dir)):
+    if s.startswith('batch'):
+        image_dirs.append(data_dir+'/'+s)
+
+for line in image_dirs:
+    temp_dataset = tvd.ImageFolder(root=line, transform=tv.transforms.Compose([tv.transforms.Grayscale(num_output_channels=1), tv.transforms.ToTensor()]))
+    temp_loader = torch.utils.data.DataLoader(temp_dataset, batch_size=len(temp_dataset), shuffle=False, num_workers=0)
+    temp_dl = iter(temp_loader)
+    data_s, target_s = next(temp_dl)
+    image_batches.append([data_s, target_s])
 
 ### use how many batches to train initially
 train_batch_num = 3
