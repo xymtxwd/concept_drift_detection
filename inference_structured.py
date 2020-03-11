@@ -46,6 +46,7 @@ from spn.algorithms.layerwise.layers import Sum, Product
 import torch
 from torch import nn
 from spn.algorithms.layerwise.clipper import DistributionClipper
+from sklearn.preprocessing import OneHotEncoder
 
 
 np.random.seed(0)
@@ -57,16 +58,24 @@ batches = []
 batch_X = []
 batch_Y = []
 
+### Specify categorical columns in the data file. 0 denotes the first column is a categorical feature, 1 denotes the second column, etc. If no categorical features, leave as an empty list
+### If multiple columns, separated by comma. Please below only include feature columns, not the label column.
+### Refer to https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.OneHotEncoder.html
+cat_col = [1,3]
+
 #change 'test' to any dir which contains your batches
 data_dir = os.getcwd()+'/test'
 for s in sorted(os.listdir(data_dir)):
     if s.startswith('batch'):
         data = np.loadtxt(data_dir+'/'+s+'/'+os.listdir(data_dir+'/'+s+'/')[0])
+        enc = OneHotEncoder(sparse=False, categorical_features = cat_col)
+        data = enc.fit_transform(data)
         X = data[:,:-1]
         Y = data[:,-1].astype(int)
         batches.append([X, Y])
         batch_X.append(X)
         batch_Y.append(Y)
+
     
 
 
